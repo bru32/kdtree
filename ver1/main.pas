@@ -41,7 +41,6 @@ const
   RANDOM_POINTS_COUNT = 15;
   RANDOM_MAX_VALUE = 20;
 
-
 var
   Tree: TKDTree = nil;
   SelectedNode: TKDNode = nil;
@@ -113,9 +112,10 @@ begin
     RandomPoint(Point, Tree.Dimention);
     Tree.Add(Point);
   end;
-  SetId;
+  SetId();
 end;
 
+{ TMainForm }
 
 procedure TMainForm.FormCreate(Sender: TObject);
 var
@@ -123,7 +123,6 @@ var
 begin
   Randomize;
   Tree := TKDTree.Create(2);
-
   Tree.Add(SetKDPoint(P, [2, 3]));
   Tree.Add(SetKDPoint(P, [5, 4]));
   Tree.Add(SetKDPoint(P, [9, 6]));
@@ -131,7 +130,6 @@ begin
   Tree.Add(SetKDPoint(P, [8, 1]));
   Tree.Add(SetKDPoint(P, [7, 2]));
   SetId();
-
 end;
 
 procedure TMainForm.btnCreateTreeClick(Sender: TObject);
@@ -198,6 +196,7 @@ end;
 
 procedure TMainForm.VisitNode(const Node: TKDNode; IsBest: Boolean);
 begin
+  // вот такая визуализация
   SelectedNode := nil;
   if not IsBest then
   begin
@@ -211,7 +210,6 @@ begin
     ViewNode := Node;
     pbxDiagram.Repaint;
     Sleep(250);
-
     ViewNode := nil;
     BestNode := Node;
     pbxDiagram.Repaint;
