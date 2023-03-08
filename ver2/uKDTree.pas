@@ -7,7 +7,7 @@
     https://en.wikipedia.org/wiki/K-d_tree
     https://rosettacode.org/wiki/K-d_tree
 
-  25 February 2023
+  8 March 2023
   Bruce Wernick
   ---------------------------------------------------------------------------- }
 
@@ -18,9 +18,31 @@ interface
 uses
   SysUtils;
 
+
 type
-  TCoord = array of Integer;
-  TVectors = array of TCoord;
+  TCoord = array of integer;
+  TCoordVec = array of TCoord;
+
+  TPriorityQueue = class
+    type
+      TItem = record
+        Priority: double;
+        Value: TCoord;
+      end;
+  private
+    FItems: array of TItem;
+    FCount: integer;
+    FSize: integer;
+    procedure siftdn(sp, cp: integer);
+    procedure siftup(cp: integer);
+  public
+    constructor Create;
+    destructor Destroy;
+    procedure Clear;
+    procedure Push(Priority: double; Value: TCoord);
+    function Pop: TCoord;
+    function Empty: boolean;
+  end;
 
   PNode = ^TNode;
   TNode = record
@@ -34,31 +56,34 @@ type
 
   TKDTree = class
   private
-    CheckedNodes: Integer;
+    CheckedNodes: integer;
     NearestNeighbour: PNode;
     DistMin: Integer;
-    NodeCounter: Integer;
+    NodeCounter: integer;
+    pq: TPriorityQueue;
     function FindParentNode(const arr: TCoord; Tree: PNode): PNode;
     procedure CheckSubtree(Node: PNode;
-      const Coord: TCoord; Depth: Integer=0);
+      const Coord: TCoord; Depth: integer=0);
   public
     constructor Create;
-    function BuildTree(arr: TVectors; Depth: Integer=0): PNode;
+    function BuildTree(arr: TCoordVec; Depth: integer=0): PNode;
     procedure Enumerate(Tree: PNode);
     procedure ShowTree(Node: PNode);
     procedure Map(proc: TProc; Node: PNode);
     function FindNearest(const Coord: TCoord; Tree: PNode): PNode;
+    procedure FindKNearest(const Coord: TCoord; Tree: PNode;
+      k: integer; var KNearest: TCoordVec);
   end;
 
 
-function ParseTIntMatrix(input: string): TVectors;
+function ParseTIntMatrix(input: string): TCoordVec;
 
-function CreateVectors(arr: array of TCoord): TVectors;
+function CreateVectors(arr: array of TCoord): TCoordVec;
 
 function InitCoord(const Data: array of const): TCoord;
 
 function RandomVectors(Count: integer = 50;
-  dim: Integer = 2; max_value: integer = 100): TVectors;
+  dim: Integer = 2; max_value: integer = 100): TCoordVec;
 
 function VectorToStr(const Coord: TCoord): string;
 
@@ -77,7 +102,7 @@ begin
   for p in input do if p = ch then inc(Result)
 end;
 
-function ParseTIntMatrix(input: string): TVectors;
+function ParseTIntMatrix(input: string): TCoordVec;
 const
   digits = ['0'..'9'];
 var
@@ -128,7 +153,7 @@ begin
   end;
 end;
 
-function CreateVectors(arr: array of TCoord): TVectors;
+function CreateVectors(arr: array of TCoord): TCoordVec;
 var
   Coord: TCoord;
   i, j, n, k: integer;
@@ -154,7 +179,7 @@ begin
 end;
 
 function RandomVectors(Count: integer = 50;
-  dim: Integer = 2; max_value: integer = 100): TVectors;
+  dim: Integer = 2; max_value: integer = 100): TCoordVec;
 var
   I, J: Integer;
 begin
@@ -181,48 +206,49 @@ end;
 
 procedure StrToVector(const S: string; var Coord: TCoord);
 var
-  I, Idx: Integer;
+  i, idx: Integer;
   Value: string;
 begin
-  Idx := 0;
-  I := 1;
-  while (I <= Length(S)) and (Idx < Length(Coord)) do begin
-    if CharInSet(S[I], ['0'..'9']) then
-      Value := Value + S[I]
+  idx := 0;
+  i := 1;
+  while (i <= Length(S)) and (idx < Length(Coord)) do begin
+    if CharInSet(S[i], ['0'..'9']) then
+      Value := Value + S[i]
     else if Value <> '' then begin
-      Coord[Idx] := StrToInt(Value);
+      Coord[idx] := StrToInt(Value);
       Value := '';
-      inc(Idx);
+      inc(idx);
     end;
-    inc(I);
+    inc(i);
   end;
   if Value <> '' then
-    Coord[Idx] := StrToInt(Value);
+    Coord[idx] := StrToInt(Value);
 end;
 
-procedure Swap(var arr: TVectors; I, J: integer);
+procedure Swap(var arr: TCoordVec; a, b: integer);
 var
-  T: TCoord;
+  temp: TCoord;
 begin
-  T := arr[J];
-  arr[J] := arr[I];
-  arr[I] := T;
+  temp := arr[b];
+  arr[b] := arr[a];
+  arr[a] := temp;
 end;
 
 (*
-procedure Sort(var arr: TVectors; Axis: Integer);
+procedure Sort(var arr: TCoordVec; Axis: integer);
 {- Select Sort }
 var
-  I, J: Integer;
+  i, j, n: integer;
 begin
-  for I := 0 to Length(arr) - 1 do
-    for J := I + 1 to Length(arr) - 1 do
-      if arr[J][Axis] < arr[I][Axis] then
-        Swap(arr, I, J);
+  n := length(arr);
+  for i := 0 to n - 1 do
+    for j := i + 1 to n - 1 do
+      if arr[j][Axis] < arr[i][Axis] then
+        Swap(arr, i, j)
 end;
 *)
 
-procedure Sort(var arr: TVectors; Axis: integer; iLo, iHi: integer);
+procedure Sort(var arr: TCoordVec; Axis: integer; iLo, iHi: integer);
 {- QuickSort }
 var
   Lo, Hi: integer;
@@ -242,17 +268,119 @@ begin
   if Lo < iHi then Sort(arr, Axis, Lo, iHi);
 end;
 
-function DistSq(const V1, V2: TCoord): Integer;
-{- Square of the distance between V1 and V2 }
+function DistSq(const Coord1, Coord2: TCoord): Integer;
+{- Square of the distance between Coords }
 var
-  K: Integer;
+  i: Integer;
   delta: integer;
 begin
   Result := 0;
-  for K := 0 to Length(V1) - 1 do begin
-    delta := V1[K] - V2[K];
+  for i := 0 to Length(Coord1) - 1 do begin
+    delta := Coord1[i] - Coord2[i];
     Result := Result + delta * delta;
   end;
+end;
+
+{ TPriorityQueue }
+
+constructor TPriorityQueue.Create;
+begin
+  FSize := 0;
+  FCount := 0;
+end;
+
+destructor TPriorityQueue.Destroy;
+begin
+  FSize := 0;
+  FCount := 0;
+  SetLength(FItems, 0);
+end;
+
+procedure TPriorityQueue.Clear;
+begin
+  FSize := 0;
+  FCount := 0;
+  SetLength(FItems, 0);
+end;
+
+procedure TPriorityQueue.siftdn(sp, cp: integer);
+{- sift down }
+var
+  item, parent: TItem;
+  pp: integer;
+begin
+  item := FItems[cp];
+  while cp > sp do begin
+    pp := (cp - 1) shr 1;
+    parent := FItems[pp];
+    if item.Priority < parent.Priority then begin
+      FItems[cp] := parent;
+      cp := pp;
+      Continue;
+    end;
+    Break;
+  end;
+  Fitems[cp] := item;
+end;
+
+procedure TPriorityQueue.siftup(cp: integer);
+{- sift up }
+var
+  sp, ep: integer;
+  hp, rp: integer;
+  item: TItem;
+begin
+  ep := FCount; // ???
+  sp := cp;
+  item := FItems[cp];
+  hp := 2*cp + 1;
+  while hp < ep do begin
+    rp := hp + 1;
+    if (rp < ep) and not (FItems[hp].Priority < FItems[rp].Priority) then
+      hp := rp;
+    FItems[cp] := FItems[hp];
+    cp := hp;
+    hp := 2*cp + 1;
+  end;
+  FItems[cp] := item;
+  siftdn(sp, cp);
+end;
+
+procedure TPriorityQueue.Push(Priority: double; Value: TCoord);
+{- push item onto priority queue }
+begin
+  if (FCount + 1 >= FSize) then begin
+    if FSize > 0 then
+      FSize := FSize * 2
+    else
+      FSize := 4;
+  end;
+  SetLength(FItems, FSize);
+  FItems[FCount].Priority := Priority;
+  FItems[FCount].Value := Value;
+  inc(FCount);
+  siftdn(0, FCount-1);
+end;
+
+function TPriorityQueue.Pop: TCoord;
+{- pop item from priority queue }
+var
+  item, last: TItem;
+begin
+  last := FItems[FCount-1];
+  if FCount > 0 then begin
+    dec(FCount);
+    item := FItems[0];
+    FItems[0] := last;
+    siftup(0);
+    Exit(item.Value);
+  end;
+  Result := last.Value;
+end;
+
+function TPriorityQueue.Empty: boolean;
+begin
+  Result := FCount <= 0;
 end;
 
 { TKDTree }
@@ -260,11 +388,12 @@ end;
 constructor TKDTree.Create;
 begin
   NodeCounter := 1;
+  pq := TPriorityQueue.Create;
 end;
 
-function TKDTree.BuildTree(arr: TVectors; Depth: Integer=0): PNode;
+function TKDTree.BuildTree(arr: TCoordVec; Depth: integer=0): PNode;
 var
-  n, K, Axis, Median: Integer;
+  n, K, Axis, Median: integer;
 begin
   Result := nil;
 
@@ -301,7 +430,7 @@ begin
   if Tree.Left <> nil then
     Enumerate(Tree.Left);
 
-  Tree.Id := NodeCounter;
+  Tree.id := NodeCounter;
   inc(NodeCounter);
 
   if Tree.Right <> nil then
@@ -330,7 +459,7 @@ end;
 function TKDTree.FindParentNode(const arr: TCoord; Tree: PNode): PNode;
 var
   Next: PNode;
-  Depth, Axis: Integer;
+  Depth, Axis: integer;
 begin
   Result := nil;
   Depth := 0;
@@ -347,17 +476,24 @@ begin
 end;
 
 procedure TKDTree.CheckSubtree(Node: PNode;
-  const Coord: TCoord; Depth: Integer = 0);
+  const Coord: TCoord; Depth: integer = 0);
 var
-  Dist, Axis: Integer;
+  Dist, Axis: integer;
+  n: integer;
 begin
   if Node = nil then Exit;
   inc(CheckedNodes);
+
+  // this locates the nearest neighbour only
   Dist := DistSq(Coord, Node.Coord);
   if Dist < DistMin then begin
     DistMin := Dist;
     NearestNeighbour := Node;
   end;
+
+  // push node.Coord onto min priority queue
+  pq.Push(Dist, Node.Coord);
+
   Axis := Depth mod Length(Node.Coord);
   Dist := Node.Coord[Axis] - Coord[Axis];
   if Dist * Dist > DistMin then begin
@@ -383,8 +519,26 @@ begin
   NearestNeighbour := Parent;
   DistMin := DistSq(Coord, Parent.Coord);
   if DistMin = 0 then Exit(NearestNeighbour);
+  pq.Clear; // prepare priority queue
   CheckSubtree(Tree, Coord);
   Result := NearestNeighbour;
+end;
+
+procedure TKDTree.FindKNearest(const Coord: TCoord; Tree: PNode;
+  k: integer; var KNearest: TCoordVec);
+var
+  Count, n: integer;
+  Value: TCoord;
+begin
+  FindNearest(Coord, Tree);
+  Count := 0;
+  while (not pq.Empty) and (Count < k) do begin
+    Value := pq.Pop;
+    n := length(KNearest);
+    SetLength(KNearest, n+1);
+    KNearest[n] := Value;
+    inc(Count);
+  end;
 end;
 
 end.

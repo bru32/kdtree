@@ -3,13 +3,15 @@ program KDTree_Simplified;
 
 uses
   SysUtils,
+  Velthuis.Console,
   uKDTree;
 
 var
   KDTree: TKDTree;
   Root, Node: PNode;
-  arr: TVectors;
+  arr, kNearest: TCoordVec;
   Target: TCoord;
+  coord: TCoord;
 begin
   Randomize;
 
@@ -17,17 +19,30 @@ begin
   arr := ParseTIntMatrix('[[2,3],[5,4],[9,6],[4,7],[8,1],[7,2]]');
   Target := InitCoord([9,2]);
 
-  // Big random example
-  //arr := RandomVectors(1000, 2, 100);
+  // Random example
+  //arr := RandomVectors(40, 2, 100);
   //Target := InitCoord([50,50]);
 
   KDTree := TKDTree.Create;
   Root := KDTree.BuildTree(arr);
+
+  writeln('ShowTree');
   KDTree.Enumerate(Root);
   KDTree.ShowTree(Root);
-  Node := KDTree.FindNearest(Target, Root);
+  writeln;
+
   Writeln('target: ', VectorToStr(Target));
+
+  Node := KDTree.FindNearest(Target, Root);
   Writeln('nearest: ', VectorToStr(Node.Coord));
+  writeln;
+
+  Writeln('KNearest');
+  KDTree.FindKNearest(Target, Root, 3, kNearest);
+  for coord in kNearest do
+    writeln(VectorToStr(coord));
+  writeln;
+
   KDTree.Free;
-  readln;
+  Pause;
 end.
