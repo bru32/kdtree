@@ -23,6 +23,16 @@ type
   TCoord = array of integer;
   TCoordVec = array of TCoord;
 
+  TCoordArray = class
+  private
+    FItems: array of TCoord;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Clear;
+    function Append(Value: TCoord): integer;
+  end;
+
   TPriorityQueue = class
     type
       TItem = record
@@ -60,6 +70,7 @@ type
     NearestNeighbour: PNode;
     DistMin: Integer;
     NodeCounter: integer;
+    Target: TCoord;
     pq: TPriorityQueue;
     function FindParentNode(const arr: TCoord; Tree: PNode): PNode;
     procedure CheckSubtree(Node: PNode;
@@ -72,6 +83,10 @@ type
     procedure Map(proc: TProc; Node: PNode);
     function FindNearest(const Coord: TCoord; Tree: PNode): PNode;
     procedure FindKNearest(const Coord: TCoord; Tree: PNode;
+      k: integer; var KNearest: TCoordVec);
+
+    procedure CalcDist(node: PNode);
+    procedure NaiveSearch(const Coord: TCoord; Tree: PNode;
       k: integer; var KNearest: TCoordVec);
   end;
 
@@ -178,6 +193,13 @@ begin
     Result[I] := Data[I].VInteger;
 end;
 
+function AppendCoord(var Coord: TCoordVec; Value: TCoord): integer;
+begin
+  Result := length(Coord);
+  SetLength(Coord, Result + 1);
+  Coord[Result] := Value
+end;
+
 function RandomVectors(Count: integer = 50;
   dim: Integer = 2; max_value: integer = 100): TCoordVec;
 var
@@ -279,6 +301,31 @@ begin
     delta := Coord1[i] - Coord2[i];
     Result := Result + delta * delta;
   end;
+end;
+
+{ TCoordArray }
+
+constructor TCoordArray.Create;
+begin
+  SetLength(FItems, 0);
+end;
+
+destructor TCoordArray.Destroy;
+begin
+  SetLength(FItems, 0);
+  inherited;
+end;
+
+procedure TCoordArray.Clear;
+begin
+  SetLength(FItems, 0);
+end;
+
+function TCoordArray.Append(Value: TCoord): integer;
+begin
+  Result := length(FItems);
+  SetLength(FItems, Result + 1);
+  FItems[Result] := Value
 end;
 
 { TPriorityQueue }
@@ -484,15 +531,16 @@ begin
   if Node = nil then Exit;
   inc(CheckedNodes);
 
-  // this locates the nearest neighbour only
   Dist := DistSq(Coord, Node.Coord);
+
+  // push node.Coord onto min priority queue
+  pq.Push(Dist, Node.Coord);
+
+  // record nearest
   if Dist < DistMin then begin
     DistMin := Dist;
     NearestNeighbour := Node;
   end;
-
-  // push node.Coord onto min priority queue
-  pq.Push(Dist, Node.Coord);
 
   Axis := Depth mod Length(Node.Coord);
   Dist := Node.Coord[Axis] - Coord[Axis];
@@ -524,19 +572,45 @@ begin
   Result := NearestNeighbour;
 end;
 
-procedure TKDTree.FindKNearest(const Coord: TCoord; Tree: PNode;
-  k: integer; var KNearest: TCoordVec);
+procedure TKDTree.FindKNearest(const Coord: TCoord;
+  Tree: PNode; k: integer; var KNearest: TCoordVec);
 var
-  Count, n: integer;
+  Count: integer;
   Value: TCoord;
 begin
+  SetLength(KNearest, 0);
   FindNearest(Coord, Tree);
   Count := 0;
   while (not pq.Empty) and (Count < k) do begin
     Value := pq.Pop;
-    n := length(KNearest);
-    SetLength(KNearest, n+1);
-    KNearest[n] := Value;
+    AppendCoord(KNearest, Value);
+    inc(Count);
+  end;
+end;
+
+procedure TKDTree.CalcDist(node: PNode);
+var
+  dist: integer;
+begin
+  dist := DistSq(Target, node.Coord);
+  pq.Push(dist, Node.Coord);
+end;
+
+procedure TKDTree.NaiveSearch(const Coord: TCoord;
+  Tree: PNode; k: integer; var KNearest: TCoordVec);
+{- Brute force search }
+var
+  Count: integer;
+  Value: TCoord;
+begin
+  Target := Coord;
+  SetLength(KNearest, 0);
+  pq.Clear;
+  Map(CalcDist, Tree);
+  Count := 0;
+  while (not pq.Empty) and (Count < k) do begin
+    Value := pq.Pop;
+    AppendCoord(KNearest, Value);
     inc(Count);
   end;
 end;
