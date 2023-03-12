@@ -1,4 +1,7 @@
+# KD-Tree
 # basic algorithm - Wikipedia
+# 11 March 2023
+# Bruce Wernick
 
 import math
 import heapq
@@ -9,7 +12,28 @@ dim = 2 # dimension of coord
 best = None
 mindist = float("inf")
 
-class PriorityQueue:
+
+class MaxHeap:
+  def __init__(self):
+    self.items = []
+
+  def clear(self):
+    self.items = []
+
+  def empty(self):
+    return len(self.items) == 0
+
+  def put(self, item, priority):
+    heapq.heappush(self.items, (-priority, item))
+
+  def get(self):
+    item, priority = heapq.heappop(self.items)
+    return (item, -priority)
+
+
+class MinHeap:
+  """ minimim priority queue
+  """
   def __init__(self):
     self.items = []
 
@@ -25,18 +49,13 @@ class PriorityQueue:
   def get(self):
     return heapq.heappop(self.items)
 
-  def putget(self, item, priority):
-    return heapq.heappushpop(self.items, (priority, item))
-
-  def peek(self):
-    return self.items[0]
-
 
 class Node:
   def __init__(self, coord):
     self.coord = coord
     self.left = None
     self.right = None
+
 
 def calc_dist(a, b):
   """ return distance
@@ -46,6 +65,7 @@ def calc_dist(a, b):
     dist += (a[i]-b[i])**2 # distance squared
     #dist += abs(a[i]-b[i]) # manhatten distance
   return dist
+
 
 def show_tree(np):
   if not np: return
@@ -107,39 +127,47 @@ def find_nn(node, coord, depth=0):
       find_nn(node.left, coord, depth+1)
 
 
+# ----------------------------------------------------------------------
 
-arr = [(1,3),(1,8),(2,2),(2,10),
-       (3,6),(4,1),(5,4),(6,8),
-       (7,4),(7,7),(8,2),(8,5),
-       (9,9)]
-
-root = make_tree(arr)
-show_tree(root)
-print("\n")
-
-target = (4,8)
-
-pq = PriorityQueue()
-
-find_all(root, target)
-print("find all")
-while not pq.empty():
-  print(pq.get())
-print()
+if __name__ == "__main__":
 
 
-pq.clear()
-find_nn(root, target)
-print("find nn")
-print(f"{best=}, {mindist=:0.2f}")
-print()
+  # Example.
+  # Given a list of 2D coordinates, find the nearest point to (4,8).
+  # data points from this pretty good article
+  # https://gopalcdas.com/2017/05/24/construction-of-k-d-tree-and-using-it-for-nearest-neighbour-search/
+  # The answer is: (6,8) dist=4
+  arr = [(1,3),(1,8),(2,2),(2,10),
+         (3,6),(4,1),(5,4),(6,8),
+         (7,4),(7,7),(8,2),(8,5),
+         (9,9)]
 
-# show 1st n items in pqueue after find_nn
-n = 3
-i = 0
-while not pq.empty():
-  i += 1
-  print(i, pq.get())
-  if i >= n:
-    break
-print()
+  root = make_tree(arr)
+  show_tree(root)
+  print("\n")
+
+  target = (4,8)
+
+  pq = MinHeap()
+
+  find_all(root, target)
+  print("find all")
+  while not pq.empty():
+    print(pq.get())
+  print()
+
+  pq.clear()
+  find_nn(root, target)
+  print("find nn")
+  print(f"{best=}, {mindist=:0.2f}")
+  print()
+
+  # show 1st n items in pqueue after find_nn
+  n = 3
+  i = 0
+  while not pq.empty():
+    i += 1
+    print(i, pq.get())
+    if i >= n:
+      break
+  print()
