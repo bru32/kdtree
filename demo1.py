@@ -61,7 +61,7 @@ def calc_dist(a, b):
   """ return distance
   """
   dist = 0
-  for i in range(2):
+  for i in range(dim):
     dist += (a[i]-b[i])**2 # distance squared
     #dist += abs(a[i]-b[i]) # manhatten distance
   return dist
@@ -166,7 +166,7 @@ if __name__ == "__main__":
   n = 3
   i = 0
   while not pq.empty():
-    i += 1
+    i += 11
     print(i, pq.get())
     if i >= n:
       break

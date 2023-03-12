@@ -37,7 +37,7 @@ def make_tree(arr, depth=0):
 
 def calc_dist(a, b):
   dist = 0
-  for i in range(2):
+  for i in range(dim):
     dist += (a[i]-b[i])**2
   return dist
 
