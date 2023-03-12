@@ -32,6 +32,7 @@ type
     function Append(Value: TCoord): integer;
   end;
 
+  // minimum priority queue
   TPriorityQueue = class
     type
       TItem = record
@@ -312,7 +313,7 @@ var
   i: integer;
 begin
   Result := 0;
-  for i := 0 to Length(Coord1) - 1 do
+  for i := 0 to high(Coord1) do
     Result := Result + sqr(Coord1[i] - Coord2[i])
 end;
 
@@ -484,7 +485,7 @@ end;
 
 procedure TKDTree.Enumerate(np: PNode);
 begin
-  if np = nil then Exit;
+  if not assigned(np) then Exit;
   if np.Left <> nil then
     Enumerate(np.Left);
   np.id := NodeCounter;
@@ -522,7 +523,7 @@ begin
   next := np;
   while next <> nil do begin
     Result := next;
-    axis := depth mod length(arr);
+    axis := depth mod dim;
     if arr[axis] > Next.Coord[axis] then
       next := next.Right
     else
@@ -533,7 +534,7 @@ end;
 
 procedure TKDTree.CheckSubtree(np: PNode;
   const Coord: TCoord; Depth: integer = 0);
-{- }
+{- recurse sub-tree }
 var
   dist, axis: integer;
   plane, targ: integer;
@@ -549,7 +550,7 @@ begin
     NearestNeighbour := np;
   end;
 
-  // push node.Coord onto min priority queue
+  // push onto min priority queue
   pq.Push(dist, np.Coord);
 
   axis := Depth mod dim;
