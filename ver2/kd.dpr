@@ -8,15 +8,15 @@ uses
 var
   KDTree: TKDTree;
   Root, Node: PNode;
-  arr, kNearest: TCoordVec;
+  arr, nNearest: TCoordVec;
   Target: TCoord;
   coord: TCoord;
 begin
   Randomize;
 
   // RosettaCode example
-  arr := ParseTIntMatrix('[[2,3],[5,4],[9,6],[4,7],[8,1],[7,2]]');
-  Target := InitCoord([9,2]);
+  arr := ParseTIntMatrix('[[1,3],[1,8],[2,2],[2,10],[3,6],[4,1],[5,4],[6,8],[7,4],[7,7],[8,2],[8,5],[9,9]]');
+  Target := InitCoord([4,8]);
 
   // Random example
   //arr := RandomVectors(40, 2, 100);
@@ -36,9 +36,9 @@ begin
   Writeln('nearest: ', VectorToStr(Node.Coord));
   writeln;
 
-  Writeln('KNearest');
-  KDTree.FindKNearest(Target, Root, 3, kNearest);
-  for coord in kNearest do
+  Writeln('nNearest');
+  KDTree.FindNNearest(Target, Root, 3, nNearest);
+  for coord in nNearest do
     writeln(VectorToStr(coord));
   writeln;
 

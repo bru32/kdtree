@@ -29,6 +29,7 @@ type
     cp, pt: TCoord;
     nNearest: integer;
     kN: TCoordVec;
+    Nn: TCoordVec;
     oldCursor: TCursor;
     procedure DrawNode(np: PNode);
   public
@@ -42,8 +43,7 @@ implementation
 {$R *.dfm}
 
 uses
-  Math,
-  txColorDef, txColorConv;
+  Math;
 
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
@@ -51,12 +51,13 @@ begin
   KDTree := TKDTree.Create;
   FWidth := PaintBox1.Width;
   FHeight := PaintBox1.Height;
-  arr := RandomVectors(20, 2, 10, FWidth-10);
+  arr := RandomVectors(60, 2, 10, FWidth-10);
   Root := KDTree.BuildTree(arr, 2);
   cp := InitCoord([0, 0]);
   pt := InitCoord([0, 0]);
   SetLength(kN, 0);
-  nNearest := 1;
+  SetLength(nN, 0);
+  nNearest := 3;
 end;
 
 procedure TMainForm.PaintBox1MouseEnter(Sender: TObject);
@@ -77,6 +78,7 @@ procedure TMainForm.PaintBox1MouseMove(Sender: TObject;
 begin
   cp := InitCoord([X, Y]);
   KDTree.FindNNearest(cp, Root, nNearest, kN);
+  KDTree.FindAll(cp, Root, nNearest, nN);
   Caption := IntToStr(KDTree.CheckedNodes);
   PaintBox1.Refresh;
 end;
@@ -126,13 +128,25 @@ begin
   FCanvas.Pen.Width := 1;
   FCanvas.Pen.Style := psSolid;
   FCanvas.Pen.Color := clBlack;
-  for i := 0 to length(kN) - 1 do begin
-    pt := kN[i];
-    FCanvas.Pen.Width := 1;
-    FCanvas.Pen.Color := clRed;
-    FCanvas.MoveTo(cp[0], cp[1]);
+  for i := 0 to length(nN) - 1 do begin
+    pt := nN[i];
+    //FCanvas.MoveTo(cp[0], cp[1]);
+    //FCanvas.LineTo(pt[0], pt[1]);
+    FCanvas.Brush.Style := bsClear;
+    FCanvas.Font.Size := 15;
+    FCanvas.TextOut(pt[0], pt[1], IntToStr(i+1));
+  end;
+
+  FCanvas.Pen.Width := 1;
+  FCanvas.Pen.Color := clLtGray;
+  pt := nN[0];
+  for i := 1 to length(nN) - 1 do begin
+    FCanvas.MoveTo(pt[0], pt[1]);
+    pt := nN[i];
     FCanvas.LineTo(pt[0], pt[1]);
   end;
+  pt := nN[0];
+  FCanvas.LineTo(pt[0], pt[1]);
 
   // highlight nearest node
   FCanvas.Pen.Width := 0;
